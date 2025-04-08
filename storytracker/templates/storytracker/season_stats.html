@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Season Stats for {{ story.club }}</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        [contenteditable="true"] {
+            border: 1px solid #ced4da;
+            padding: 5px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        [contenteditable="true"]:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 200px;
+        }
+        /* Update these styles to match the League Winners & Awards card */
+        .season-stats-card {
+            /* Remove the negative margins that were pushing it out too far */
+            margin-left: 0;
+            margin-right: 0;
+            padding: 0;
+        }
+        .season-stats-card .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            /* Match the style but keep within container bounds */
+            width: 100%;
+        }
+        .season-stats-card .card-body {
+            padding: 1.25rem; /* Match Bootstrap's default card-body padding */
+        }
+        .card-header {
+            transition: background-color 0.3s;
+        }
+        
+        .card-header:hover {
+            background-color: #e9ecef;
+        }
+        
+        .card-body.collapse {
+            transition: height 0.35s ease, opacity 0.35s ease;
+        }
+        
+        .collapse-icon {
+            transition: transform 0.3s ease;
+        }
+        
+        .card-header:hover .collapse-icon {
+            transform: rotate(180deg);
+        }
+        
+        .card-body.collapsing {
+            height: 0;
+            overflow: hidden;
+            transition: height 0.35s ease;
+        }
+        
+        .card-body.collapse.show {
+            display: block;
+        }
+        #stats-table-body tr, 
+        #players-in-tbody tr, 
+        #players-out-tbody tr {
+            transition: background-color 0.3s ease;
+        }
+
+        #stats-table-body tr:hover,
+        #players-in-tbody tr:hover,
+        #players-out-tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+        }
+
+        /* Smooth transition for form elements */
+        input.form-control, select.form-control {
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+
+        /* Button hover animations */
+        .btn {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* Staggered card animations */
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+        .form-control:focus {
+            transform: scale(1.01);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        /* Button click effect */
+        .btn:active {
+            transform: scale(0.97);
+        }
+        
+        /* Navbar styles from index.html */
+        .navbar {
+            background-color: #343a40;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #fff !important;
+        }
+        .nav-link.active {
+            color: #fff !important;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">FIFA Career Story</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home' %}">Home</a>
+                </li>
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'my_stories' %}">My Stories</a>
+                </li>
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <span class="nav-link">Welcome, {{ user.username }}</span>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'login' %}">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'register' %}">Register</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h1 class="my-4 text-center">Season Stats for {{ story.club }}</h1>
+
+    <!-- Season selector -->
+    <div class="row mb-3">
+        <div class="col">
+            <select class="form-control" id="seasonSelect">
+                {% for season in seasons %}
+                    <option value="{{ season.season }}" {% if selected_season == season.season %}selected{% endif %}>
+                        {{ season.season }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col">
+            <button class="btn btn-success" id="addSeasonBtn">
+                <i class="fas fa-plus"></i> Add New Season
+            </button>
+        </div>
+    </div>
+    
+    <!-- Season Stats Card -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Season Stats for Season {{ selected_season }}</h5>
+                </div>
+                <div class="card-body">
+                    <form id="edit-stats-form" method="post" action="{% url 'save_season_stats' story.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="story_id" value="{{ story.id }}">
+                        <div id="hidden-inputs-container"></div>
+                        
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">Player Name</th>
+                                    <th style="width: 9.375%;">Ovr</th>
+                                    <th style="width: 9.375%;">App</th>
+                                    <th style="width: 9.375%;">Goals</th>
+                                    <th style="width: 9.375%;">Assists</th>
+                                    <th style="width: 9.375%;">CS</th>
+                                    <th style="width: 9.375%;">RC</th>
+                                    <th style="width: 9.375%;">YC</th>
+                                    <th style="width: 9.375%;">Avg</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stats-table-body">
+                                {% for stat in season_stats %}
+                                <tr data-stat-id="{{ stat.id }}" data-season="{{ stat.season }}">
+                                    <td contenteditable="true" data-field="player_name" data-stat-id="{{ stat.id }}">{{ stat.player_name }}</td>
+                                    <td contenteditable="true" data-field="overall_rating" data-stat-id="{{ stat.id }}">{{ stat.overall_rating|default:0 }}</td>
+                                    <td contenteditable="true" data-field="appearances" data-stat-id="{{ stat.id }}">{{ stat.appearances }}</td>
+                                    <td contenteditable="true" data-field="goals" data-stat-id="{{ stat.id }}">{{ stat.goals }}</td>
+                                    <td contenteditable="true" data-field="assists" data-stat-id="{{ stat.id }}">{{ stat.assists }}</td>
+                                    <td contenteditable="true" data-field="clean_sheets" data-stat-id="{{ stat.id }}">{{ stat.clean_sheets }}</td>
+                                    <td contenteditable="true" data-field="red_cards" data-stat-id="{{ stat.id }}">{{ stat.red_cards }}</td>
+                                    <td contenteditable="true" data-field="yellow_cards" data-stat-id="{{ stat.id }}">{{ stat.yellow_cards }}</td>
+                                    <td contenteditable="true" data-field="average_rating" data-stat-id="{{ stat.id }}">{{ stat.average_rating }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="text-center mt-3">
+                            <button type="button" id="add-row-btn" class="btn btn-secondary btn-sm">Add Player</button>
+                            <button type="submit" id="save-changes-btn" class="btn btn-primary btn-sm">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- League Winners & Awards Card -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">League Winners & Awards for Season {{ selected_season }}</h5>
+                </div>
+                <div class="card-body">
+                    <form id="edit-awards-form" method="post" action="{% url 'save_season_awards' story.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="story_id" value="{{ story.id }}">
+                        <input type="hidden" name="season" value="{{ selected_season }}">
+                        
+                        <div class="row">
+                            <!-- League Winners Column -->
+                            <div class="col-md-4">
+                                <h6 class="border-bottom pb-2 mb-3">League Winners</h6>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">La Liga</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="la_liga_winner" value="{{ season_awards.la_liga_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Serie A</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="serie_a_winner" value="{{ season_awards.serie_a_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Bundesliga</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="bundesliga_winner" value="{{ season_awards.bundesliga_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Ligue 1</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="ligue_1_winner" value="{{ season_awards.ligue_1_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Premier League</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="premier_league_winner" value="{{ season_awards.premier_league_winner|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Cup Winners Column -->
+                            <div class="col-md-4">
+                                <h6 class="border-bottom pb-2 mb-3">Cup Winners</h6>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Champions League</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="champions_league_winner" value="{{ season_awards.champions_league_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Europa League</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="europa_league_winner" value="{{ season_awards.europa_league_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Conference League</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="conference_league_winner" value="{{ season_awards.conference_league_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Super Cup</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="super_cup_winner" value="{{ season_awards.super_cup_winner|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Individual Awards Column -->
+                            <div class="col-md-4">
+                                <h6 class="border-bottom pb-2 mb-3">Individual Awards</h6>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Ballon d'Or</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="balon_dor_winner" value="{{ season_awards.balon_dor_winner|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-5 col-form-label">Golden Boy</label>
+                                    <div class="col-7">
+                                        <input type="text" class="form-control form-control-sm" name="golden_boy_winner" value="{{ season_awards.golden_boy_winner|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <button type="submit" class="btn btn-primary btn-sm">Save Awards</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Transfers Card -->
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Transfers for Season {{ selected_season }}</h5>
+                </div>
+                <div class="card-body collapse show">
+                    <div class="row">
+                        <!-- Players In Column -->
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2 mb-3">Players In</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Player</th>
+                                        <th style="width: 30%;">From</th>
+                                        <th style="width: 20%;">Fee</th>
+                                        <th style="width: 10%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="players-in-tbody">
+                                    {% for transfer in transfers_in %}
+                                    <tr data-transfer-id="{{ transfer.id }}">
+                                        <td contenteditable="true" data-field="player_name" data-transfer-id="{{ transfer.id }}">{{ transfer.player_name }}</td>
+                                        <td contenteditable="true" data-field="club" data-transfer-id="{{ transfer.id }}">{{ transfer.club }}</td>
+                                        <td contenteditable="true" data-field="fee" data-transfer-id="{{ transfer.id }}">{{ transfer.fee }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger delete-transfer-btn" data-transfer-id="{{ transfer.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn btn-secondary btn-sm mt-2" id="add-player-in-btn">
+                                <i class="fas fa-plus"></i> Add Player In
+                            </button>
+                        </div>
+                        
+                        <!-- Players Out Column -->
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2 mb-3">Players Out</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40%;">Player</th>
+                                        <th style="width: 30%;">To</th>
+                                        <th style="width: 20%;">Fee</th>
+                                        <th style="width: 10%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="players-out-tbody">
+                                    {% for transfer in transfers_out %}
+                                    <tr data-transfer-id="{{ transfer.id }}">
+                                        <td contenteditable="true" data-field="player_name" data-transfer-id="{{ transfer.id }}">{{ transfer.player_name }}</td>
+                                        <td contenteditable="true" data-field="club" data-transfer-id="{{ transfer.id }}">{{ transfer.club }}</td>
+                                        <td contenteditable="true" data-field="fee" data-transfer-id="{{ transfer.id }}">{{ transfer.fee }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger delete-transfer-btn" data-transfer-id="{{ transfer.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <button type="button" class="btn btn-secondary btn-sm mt-2" id="add-player-out-btn">
+                                <i class="fas fa-plus"></i> Add Player Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        let newRowId = -1; // Initialize new row ID as a negative number
+
+        // When page loads, ensure all seasons are properly displayed
+        function ensureSeasonsLoaded() {
+            const storyId = $('input[name="story_id"]').val();
+            
+            // Make an AJAX call to get all seasons for this story
+            $.ajax({
+                url: '{% url "get_seasons" story.id %}',  // You'll need to create this URL in urls.py
+                type: 'GET',
+                data: {
+                    story_id: storyId
+                },
+                success: function(response) {
+                    if (response.success && response.seasons && response.seasons.length > 0) {
+                        // Clear and repopulate the season dropdown
+                        const seasonSelect = $('#seasonSelect');
+                        const currentSelected = seasonSelect.val();
+                        seasonSelect.empty();
+                        
+                        // Add all seasons from the response
+                        response.seasons.forEach(function(season) {
+                            const option = $('<option></option>')
+                                .attr('value', season)
+                                .text(season);
+                                
+                            // If this was the selected season, keep it selected
+                            if (season === currentSelected) {
+                                option.attr('selected', true);
+                            }
+                            
+                            seasonSelect.append(option);
+                        });
+                        
+                        // If nothing is selected, select the first season
+                        if (seasonSelect.val() === null && response.seasons.length > 0) {
+                            seasonSelect.val(response.seasons[0]);
+                            seasonSelect.trigger('change');
+                        }
+                    } else {
+                        console.error("Failed to load seasons or no seasons returned");
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error loading seasons:", error);
+                }
+            });
+        }
+        
+        // Call this function when page loads
+        ensureSeasonsLoaded();
+        
+        // Rest of your existing code...
+
+        // Handle the Save Changes form submission
+        $('#edit-stats-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            const storyId = $('input[name="story_id"]').val();
+            let allStats = [];
+            
+            // Group stats by player name and season
+            $('[contenteditable="true"]').each(function() {
+                const statId = $(this).data('stat-id');
+                const fieldName = $(this).data('field');
+                const value = $(this).text().trim();
+                const row = $(this).closest('tr');
+                const season = row.data('season');
+                
+                // Find or create object for this stat
+                let statObj = allStats.find(s => s.id === statId);
+                if (!statObj) {
+                    statObj = { 
+                        id: statId,
+                        season: season
+                    };
+                    allStats.push(statObj);
+                }
+                
+                // Add this field to the stat object
+                statObj[fieldName] = value;
+            });
+
+            // Create the data object to send
+            const data = {
+                stats: allStats,
+                season: $('#seasonSelect').val(),
+                story_id: storyId
+            };
+
+            // Send the AJAX request
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Store current season before reload
+                        const currentSeason = $('#seasonSelect').val();
+                        
+                        // Reload the page with season parameter
+                        window.location.href = window.location.pathname + '?season=' + currentSeason;
+                    } else {
+                        alert('Error saving stats: ' + (response.error || 'Unknown error'));
+                    }
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Error saving stats.';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage += ' ' + (response.error || response.message || '');
+                    } catch (e) {
+                        // Keep default error message if response can't be parsed
+                    }
+                    alert(errorMessage);
+                }
+            });
+        });
+
+        // Update the Add Row button click handler
+        $('#add-row-btn').on('click', function() {
+            const selectedSeason = $('#seasonSelect').val();
+            const storyId = $('input[name="story_id"]').val();
+            
+            // Count existing players to create a unique name
+            const existingPlayerCount = $(`#stats-table-body tr[data-season="${selectedSeason}"]`).length;
+            const playerName = `New Player ${existingPlayerCount + 1}`;
+            
+            // Create a default player object with unique name
+            const newPlayer = {
+                player_name: playerName,
+                overall_rating: 0,
+                appearances: 0,
+                goals: 0,
+                assists: 0,
+                clean_sheets: 0,
+                red_cards: 0,
+                yellow_cards: 0,
+                average_rating: 0,
+                season: selectedSeason
+            };
+            
+            // Rest of your existing code...
+            $.ajax({
+                url: '{% url "save_season_stats" story.id %}',
+                type: 'POST',
+                data: JSON.stringify({
+                    stats: [{ id: newRowId, ...newPlayer }],
+                    season: selectedSeason,
+                    story_id: storyId
+                }),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Create new row with the returned ID from the server
+                        const newPlayerId = response.new_player_id;
+                        if (newPlayerId) {
+                            const newRow = `
+                                <tr data-stat-id="${newPlayerId}" data-season="${selectedSeason}">
+                                    <td contenteditable="true" data-field="player_name" data-stat-id="${newPlayerId}">${newPlayer.player_name}</td>
+                                    <td contenteditable="true" data-field="overall_rating" data-stat-id="${newPlayerId}">${newPlayer.overall_rating}</td>
+                                    <td contenteditable="true" data-field="appearances" data-stat-id="${newPlayerId}">${newPlayer.appearances}</td>
+                                    <td contenteditable="true" data-field="goals" data-stat-id="${newPlayerId}">${newPlayer.goals}</td>
+                                    <td contenteditable="true" data-field="assists" data-stat-id="${newPlayerId}">${newPlayer.assists}</td>
+                                    <td contenteditable="true" data-field="clean_sheets" data-stat-id="${newPlayerId}">${newPlayer.clean_sheets}</td>
+                                    <td contenteditable="true" data-field="red_cards" data-stat-id="${newPlayerId}">${newPlayer.red_cards}</td>
+                                    <td contenteditable="true" data-field="yellow_cards" data-stat-id="${newPlayerId}">${newPlayer.yellow_cards}</td>
+                                    <td contenteditable="true" data-field="average_rating" data-stat-id="${newPlayerId}">${newPlayer.average_rating}</td>
+                                </tr>
+                            `;
+                            $('#stats-table-body').append(newRow);
+                            
+                            // Focus on the player name field for immediate editing
+                            $(`[data-field="player_name"][data-stat-id="${newPlayerId}"]`).focus();
+                        } else {
+                            alert('Error: No player ID returned from server.');
+                        }
+                    } else {
+                        alert('Error adding player: ' + (response.error || 'Unknown error'));
+                    }
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Error adding player.';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage += ' ' + (response.error || response.message || '');
+                    } catch (e) {
+                        // Keep default error message if response can't be parsed
+                    }
+                    alert(errorMessage);
+                }
+            });
+            
+            newRowId--; // Decrement newRowId for potential future new rows
+        });
+
+        document.getElementById('addSeasonBtn').addEventListener('click', function() {
+            const button = this;
+        
+            // Prevent duplicate submissions
+            if (button.disabled) return;
+            button.disabled = true;
+        
+            const seasonSelect = document.getElementById('seasonSelect');
+            const seasons = Array.from(seasonSelect.options).map(opt => opt.value);
+            const lastSeason = seasons[seasons.length - 1];
+        
+            // Parse the last season and generate the new season
+            const [start, end] = lastSeason.split('/');
+            const newStart = parseInt(start) + 1;
+            const newEnd = parseInt(end) + 1;
+            const newSeason = `${newStart}/${newEnd}`;
+        
+            // Disable button and send request
+            $.ajax({
+                url: '{% url "add_season" story.id %}',
+                type: 'POST',
+                data: JSON.stringify({ season: newSeason }),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Add new season to the dropdown
+                        const option = document.createElement('option');
+                        option.value = response.season;
+                        option.text = response.season;
+                        seasonSelect.appendChild(option);
+        
+                        // Select the new season
+                        seasonSelect.value = response.season;
+                        
+                        // Redirect to the new season page
+                        window.location.href = window.location.pathname + '?season=' + response.season;
+                    } else {
+                        alert(response.error || 'Unknown error occurred.');
+                    }
+                },
+                error: function(xhr) {
+                    // Try to parse the response to handle known errors
+                    try {
+                        const errorData = JSON.parse(xhr.responseText);
+                        if (errorData.success === true) {
+                            // This is actually a success response that was misinterpreted as an error
+                            // Add new season to dropdown
+                            const option = document.createElement('option');
+                            option.value = errorData.season;
+                            option.text = errorData.season;
+                            seasonSelect.appendChild(option);
+                            
+                            // Select and navigate to the new season
+                            seasonSelect.value = errorData.season;
+                            window.location.href = window.location.pathname + '?season=' + errorData.season;
+                            return;
+                        } else if (errorData.error && errorData.error.includes("duplicate key value")) {
+                            alert(`Season ${newSeason} already exists.`);
+                            // Navigate to the existing season
+                            seasonSelect.value = newSeason;
+                            window.location.href = window.location.pathname + '?season=' + newSeason;
+                            return;
+                        }
+                    } catch(e) {
+                        // Could not parse response as JSON, continue with generic error
+                    }
+                    
+                    alert('Error adding season. Please check your input and try again.');
+                },
+                complete: function() {
+                    button.disabled = false; // Re-enable button after request completion
+                }
+            });
+        });
+
+        $('#seasonSelect').on('change', function() {
+            const season = $(this).val();
+            
+            // Update URL without page reload using History API
+            const newUrl = window.location.pathname + '?season=' + season;
+            window.history.pushState({ season: season }, '', newUrl);
+            
+            // Show loading indicator
+            $('#stats-table-body').html('<tr><td colspan="8" class="text-center">Loading data...</td></tr>');
+            
+            // Load all data for the new season via AJAX
+            $.ajax({
+                url: window.location.pathname,
+                data: { season: season },
+                dataType: 'html',  // Changed to HTML since the response is likely a full page
+                success: function(response) {
+                    // Parse the HTML response
+                    const htmlResponse = $(response);
+                    
+                    // Update card header titles with more specific selectors
+                    // Only update the first card's title
+                    $('.season-stats-card .card-header h5, .card .card-header h5').first()
+                        .text('Season Stats for Season ' + season);
+                    
+                    // Update the second card's title separately
+                    $('.card:contains("League Winners") .card-header h5').text('League Winners & Awards for Season ' + season);
+                    
+                    // Extract player stats rows from the response
+                    const newRows = htmlResponse.find('#stats-table-body tr');
+                    
+                    if (newRows.length > 0) {
+                        // Replace the table body with the new rows
+                        $('#stats-table-body').empty().append(newRows);
+                    } else {
+                        // If no rows found, check if any existing rows match the season
+                        const existingRows = $('#stats-table-body tr').filter(function() {
+                            return $(this).data('season') === season;
+                        });
+                        
+                        if (existingRows.length > 0) {
+                            // Show existing rows for this season
+                            $('#stats-table-body tr').hide();
+                            existingRows.show();
+                        } else {
+                            // No rows for this season
+                            $('#stats-table-body').html('<tr><td colspan="8" class="text-center">No player stats for this season yet. Add players below.</td></tr>');
+                        }
+                    }
+                    
+                    // Extract and update awards data
+                    const formInputs = htmlResponse.find('#edit-awards-form input[type="text"]');
+                    if (formInputs.length > 0) {
+                        formInputs.each(function() {
+                            const name = $(this).attr('name');
+                            const value = $(this).val();
+                            $(`input[name="${name}"]`).val(value);
+                        });
+                    } else {
+                        // Clear award fields if no data found
+                        $('#edit-awards-form input[type="text"]').val('');
+                    }
+                    
+                    // Update awards header
+                    $('.card-header:contains("League Winners")').find('h5').text('League Winners & Awards for Season ' + season);
+                    
+                    // Update the form's season field
+                    $('input[name="season"]').val(season);
+                },
+                error: function() {
+                    // Handle error case
+                    $('#stats-table-body').html('<tr><td colspan="8" class="text-center text-danger">Error loading data. Please try again.</td></tr>');
+                }
+            });
+        });
+
+        function loadSeasonStats(season) {
+            // Filter visible rows based on season
+            $('#stats-table-body tr').each(function() {
+                const rowSeason = $(this).data('season');
+                if (rowSeason === season) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        }
+
+        // Add this after document ready to show initial season's stats
+        $(document).ready(function() {
+            // ...existing ready function code...
+            
+            // Load initial season stats
+            const initialSeason = $('#seasonSelect').val();
+            loadSeasonStats(initialSeason);
+        });
+
+        // Replace the existing success handler in the awards form AJAX request
+        $('#edit-awards-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: new FormData(this),
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        // Show success message without redirecting
+                        const alertDiv = $('<div>')
+                            .addClass('alert alert-success alert-dismissible fade show')
+                            .attr('role', 'alert')
+                            .text('Awards saved successfully!')
+                            .append('<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>');
+                        
+                        // Insert alert before the form
+                        $('.card-header').after(alertDiv);
+                        
+                        // Auto dismiss after 3 seconds
+                        setTimeout(function() {
+                            alertDiv.alert('close');
+                        }, 3000);
+                    } else {
+                        alert('Error saving awards: ' + (response.error || 'Unknown error'));
+                    }
+                },
+                error: function(xhr) {
+                    alert('Error saving awards. Please try again.');
+                }
+            });
+        });
+    });
+
+    // Add collapse functionality to card headers
+    $('.card-header').css('cursor', 'pointer').each(function() {
+        // Only add icon if one doesn't already exist
+                const cardTitle = $(this).find('h5');
+        cardTitle.html(`
+            ${cardTitle.html()}
+            <i class="fas fa-chevron-up float-right collapse-icon"></i>
+        `);
+        
+        // Add click handler
+        $(this).on('click', function() {
+            // Toggle the card body
+            const cardBody = $(this).siblings('.card-body');
+            cardBody.collapse('toggle');
+            
+            // Toggle the icon
+            const icon = $(this).find('.collapse-icon');
+            icon.toggleClass('fa-chevron-up fa-chevron-down');
+        });
+    });
+
+    // Make card bodies collapsible
+    $('.card-body').addClass('collapse show');
+ 
+// Add this after your existing document.ready function
+
+// Add key press handler for table cells
+$(document).on('keydown', '[contenteditable="true"]', function(e) {
+    // Check if Enter key was pressed
+    if (e.key === 'Enter') {
+        e.preventDefault();  // Prevent default Enter behavior (new line)
+        
+        // Save the current data
+        const statId = $(this).data('stat-id');
+        const fieldName = $(this).data('field');
+        const value = $(this).text().trim();
+        const row = $(this).closest('tr');
+        const season = row.data('season');
+        const storyId = $('input[name="story_id"]').val();
+        
+        // Create a stat object with just this field's data
+        const statObj = {
+            id: statId,
+            season: season
+        };
+        statObj[fieldName] = value;
+        
+        // Create the data object to send
+        const data = {
+            stats: [statObj],
+            season: $('#seasonSelect').val(),
+            story_id: storyId
+        };
+        
+        // Show visual feedback that save is in progress
+        $(this).css('background-color', '#f0f8ff'); // Light blue background
+        
+        // Send the AJAX request
+        $.ajax({
+            url: $('#edit-stats-form').attr('action'),
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Visual feedback for success
+                    $(e.target).css('background-color', '#e6ffe6')  // Light green
+                    setTimeout(function() {
+                        $(e.target).css('background-color', '#f8f9fa'); // Back to default
+                    }, 500);
+                    
+                    // Move focus to the next cell or row if available
+                    const allCells = $('[contenteditable="true"]');
+                    const currentIndex = allCells.index(e.target);
+                    if (currentIndex < allCells.length - 1) {
+                        allCells.eq(currentIndex + 1).focus();
+                    }
+                } else {
+                    // Visual feedback for error
+                    $(e.target).css('background-color', '#ffe6e6');  // Light red
+                    alert('Error saving: ' + (response.error || 'Unknown error'));
+                    $(e.target).css('background-color', '#f8f9fa');  // Back to default
+                }
+            },
+            error: function(xhr) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.error && response.error.includes("duplicate key value")) {
+                        alert(`Season ${newSeason} already exists.`);
+            
+                        // Optionally add season to dropdown if not yet displayed
+                        if (!seasonExists) {
+                            const option = document.createElement('option');
+                            option.value = newSeason;
+                            option.text = newSeason;
+                            seasonSelect.add(option);
+                        }
+            
+                        // Navigate to the season directly
+                        seasonSelect.value = newSeason;
+                        window.location.href = window.location.pathname + '?season=' + newSeason;
+                    } else {
+                        alert('Error adding season: ' + (response.error || 'Unknown error'));
+                    }
+                } catch (e) {
+                    alert('Error adding season. Please try again.');
+                }
+            }
+        });
+        
+        return false;  // Prevent default behavior
+    }
+});
+
+// Also add blur handler for saving when clicking outside (optional)
+$(document).on('blur', '[contenteditable="true"]', function(e) {
+    // Only trigger save if content was actually changed
+    const originalValue = $(this).data('original-value');
+    const currentValue = $(this).text().trim();
+    
+    if (originalValue !== currentValue) {
+        // Store the new value as original
+        $(this).data('original-value', currentValue);
+        
+        // Use the same save logic as the Enter key handler
+        const statId = $(this).data('stat-id');
+        const fieldName = $(this).data('field');
+        const value = currentValue;
+        const row = $(this).closest('tr');
+        const season = row.data('season');
+        const storyId = $('input[name="story_id"]').val();
+        
+        // Create a stat object with just this field's data
+        const statObj = {
+            id: statId,
+            season: season
+        };
+        statObj[fieldName] = value;
+        
+        // Create the data object to send
+        const data = {
+            stats: [statObj],
+            season: $('#seasonSelect').val(),
+            story_id: storyId
+        };
+        
+        // Send the AJAX request without visual feedback
+        $.ajax({
+            url: $('#edit-stats-form').attr('action'),
+            type: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (!response.success) {
+                    alert('Error saving change: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function() {
+                // Only show errors, not success
+                alert('Error saving change. Please try again.');
+            }
+        });
+    }
+});
+
+// Store original values when focusing on cells
+$(document).on('focus', '[contenteditable="true"]', function() {
+    $(this).data('original-value', $(this).text().trim());
+});
+
+// Transfer handling code
+$(document).ready(function() {
+    let newTransferId = -1; // Negative IDs for new transfers before saving
+
+    // Add Player In button
+    $('#add-player-in-btn').on('click', function() {
+        addNewTransfer('in');
+    });
+
+    // Add Player Out button
+    $('#add-player-out-btn').on('click', function() {
+        addNewTransfer('out');
+    });
+
+    // Function to add new transfer row
+    function addNewTransfer(direction) {
+        const currentId = newTransferId;
+        const season = $('#seasonSelect').val();
+        const storyId = $('input[name="story_id"]').val();
+        const tableId = direction === 'in' ? 'players-in-tbody' : 'players-out-tbody';
+        
+        // Count existing transfers to create a unique name
+        const existingCount = $(`#${tableId} tr`).length;
+        
+        // Default data for new transfer with unique name
+        const transferData = {
+            id: currentId,
+            player_name: `New Player ${existingCount + 1}`,  // Make name unique
+            club: direction === 'in' ? "Former Club" : "New Club",
+            fee: "€0",
+            direction: direction,
+            season: season
+        };
+        
+        // Send AJAX request to create transfer
+        $.ajax({
+            url: '{% url "save_transfer" story.id %}',
+            type: 'POST',
+            data: JSON.stringify({
+                transfer: transferData,
+                story_id: storyId
+            }),
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    const newId = response.transfer_id;
+                    
+                    // Create and add the new row
+                    const newRow = `
+                        <tr data-transfer-id="${newId}">
+                            <td contenteditable="true" data-field="player_name" data-transfer-id="${newId}">${transferData.player_name}</td>
+                            <td contenteditable="true" data-field="club" data-transfer-id="${newId}">${transferData.club}</td>
+                            <td contenteditable="true" data-field="fee" data-transfer-id="${newId}">${transferData.fee}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger delete-transfer-btn" data-transfer-id="${newId}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    $(`#${tableId}`).append(newRow);
+                    
+                    // Focus on the player name for immediate editing
+                    $(`[data-field="player_name"][data-transfer-id="${newId}"]`).focus();
+                    
+                    // Decrement ID for next new transfer
+                    newTransferId--;
+                } else {
+                    alert('Error adding transfer: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Error adding transfer. Please try again.');
+            }
+        });
+    }
+
+    // Handle saving transfer data on blur
+    $(document).on('blur', '[data-transfer-id] [contenteditable="true"]', function() {
+        const transferId = $(this).data('transfer-id');
+        const field = $(this).data('field');
+        const value = $(this).text().trim();
+        const originalValue = $(this).data('original-value');
+        
+        // Only save if value changed
+        if (value !== originalValue) {
+            saveTransferField(transferId, field, value);
+        }
+    });
+
+    // Handle saving on Enter key
+    $(document).on('keydown', '[data-transfer-id] [contenteditable="true"]', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            
+            const transferId = $(this).data('transfer-id');
+            const field = $(this).data('field');
+            const value = $(this).text().trim();
+            
+            // Save the field value
+            saveTransferField(transferId, field, value);
+            
+            // Find next cell to focus
+            const allCells = $('[data-transfer-id] [contenteditable="true"]');
+            const currentIndex = allCells.index(this);
+            if (currentIndex < allCells.length - 1) {
+                allCells.eq(currentIndex + 1).focus();
+            }
+        }
+    });
+
+    // Store original value when focusing
+    $(document).on('focus', '[data-transfer-id] [contenteditable="true"]', function() {
+        $(this).data('original-value', $(this).text().trim());
+    });
+
+    // Function to save transfer field
+    function saveTransferField(transferId, field, value) {
+        const storyId = $('input[name="story_id"]').val();
+        const season = $('#seasonSelect').val();
+        const direction = $('#players-in-tbody').find(`[data-transfer-id="${transferId}"]`).length > 0 ? 'in' : 'out';
+        
+        // Visual feedback for saving
+        const element = $(`[data-transfer-id="${transferId}"][data-field="${field}"]`);
+        element.css('background-color', '#f0f8ff');
+        
+        $.ajax({
+            url: '{% url "save_transfer" story.id %}',
+            type: 'POST',
+            data: JSON.stringify({
+                transfer: {
+                    id: transferId,
+                    [field]: value,
+                    direction: direction,
+                    season: season
+                },
+                story_id: storyId
+            }),
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Visual feedback for success
+                    element.css('background-color', '#e6ffe6');
+                    setTimeout(() => {
+                        element.css('background-color', '');
+                    }, 500);
+                } else {
+                    // Visual feedback for error
+                    element.css('background-color', '#ffe6e6');
+                    alert('Error saving transfer: ' + (response.error || 'Unknown error'));
+                    setTimeout(() => {
+                        element.css('background-color', '');
+                    }, 500);
+                }
+            },
+            error: function() {
+                element.css('background-color', '#ffe6e6');
+                alert('Error saving transfer. Please try again.');
+                setTimeout(() => {
+                    element.css('background-color', '');
+                }, 500);
+            }
+        });
+    }
+
+    // Delete transfer button handler
+    $(document).on('click', '.delete-transfer-btn', function() {
+        const transferId = $(this).data('transfer-id');
+        const storyId = $('input[name="story_id"]').val();
+        const row = $(this).closest('tr');
+        
+        if (confirm('Are you sure you want to delete this transfer?')) {
+            $.ajax({
+                url: '{% url "delete_transfer" story.id %}',
+                type: 'POST',
+                data: JSON.stringify({
+                    transfer_id: transferId,
+                    story_id: storyId
+                }),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        row.fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    } else {
+                        alert('Error deleting transfer: ' + (response.error || 'Unknown error'));
+                    }
+                },
+                error: function() {
+                    alert('Error deleting transfer. Please try again.');
+                }
+            });
+        }
+    });
+
+    // Update transfers when season changes
+    $('#seasonSelect').on('change', function() {
+        const season = $(this).val();
+        loadTransfersForSeason(season);
+    });
+
+    function loadTransfersForSeason(season) {
+        const storyId = $('input[name="story_id"]').val();
+        
+        $.ajax({
+            url: '{% url "get_transfers" story.id %}',
+            type: 'GET',
+            data: {
+                season: season,
+                story_id: storyId
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Clear existing transfers
+                    $('#players-in-tbody, #players-out-tbody').empty();
+                    
+                    // Add players in
+                    response.transfers_in.forEach(transfer => {
+                        $('#players-in-tbody').append(`
+                            <tr data-transfer-id="${transfer.id}">
+                                <td contenteditable="true" data-field="player_name" data-transfer-id="${transfer.id}">${transfer.player_name}</td>
+                                <td contenteditable="true" data-field="club" data-transfer-id="${transfer.id}">${transfer.club}</td>
+                                <td contenteditable="true" data-field="fee" data-transfer-id="${transfer.id}">${transfer.fee}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger delete-transfer-btn" data-transfer-id="${transfer.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                    
+                    // Add players out
+                    response.transfers_out.forEach(transfer => {
+                        $('#players-out-tbody').append(`
+                            <tr data-transfer-id="${transfer.id}">
+                                <td contenteditable="true" data-field="player_name" data-transfer-id="${transfer.id}">${transfer.player_name}</td>
+                                <td contenteditable="true" data-field="club" data-transfer-id="${transfer.id}">${transfer.club}</td>
+                                <td contenteditable="true" data-field="fee" data-transfer-id="${transfer.id}">${transfer.fee}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger delete-transfer-btn" data-transfer-id="${transfer.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    alert('Error loading transfers: ' + (response.error || 'Unknown error'));
+                }
+            },
+            error: function() {
+                alert('Error loading transfers. Please try again.');
+            }
+        });
+    }
+
+    // Load transfers for initial season
+    loadTransfersForSeason($('#seasonSelect').val());
+});
+</script>
+
+<script>
+    // Fix for season loading issue
+    $(document).ready(function() {
+        // Get initial season from the URL parameter or select element
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentSeason = urlParams.get('season');
+        
+        if (!currentSeason) {
+            currentSeason = $('#seasonSelect').val();
+        }
+        
+        // Make sure we have the history state set correctly
+        if (history.replaceState) {
+            const newUrl = window.location.pathname + '?season=' + currentSeason;
+            history.replaceState({season: currentSeason}, '', newUrl);
+        }
+        
+        // Bind a more robust change handler to the season select
+        $('#seasonSelect').off('change').on('change', function() {
+            const selectedSeason = $(this).val();
+            window.location.href = window.location.pathname + '?season=' + selectedSeason;
+        });
+        
+        // Add a direct back button function to preserve state
+        window.addEventListener('popstate', function(e) {
+            if (e.state && e.state.season) {
+                // Handle browser back button by reloading with correct season
+                window.location.reload();
+            }
+        });
+        
+        // Remove the old event handler(s) and add a clean implementation
+        $('#addSeasonBtn').off('click').on('click', function() {
+            const button = this;
+            
+            // Prevent duplicate submissions
+            if (button.disabled) return;
+            button.disabled = true;
+            
+            const seasonSelect = document.getElementById('seasonSelect');
+            const seasons = Array.from(seasonSelect.options).map(opt => opt.value);
+            const lastSeason = seasons[seasons.length - 1];
+            
+            // Parse the season parts
+            const [start, end] = lastSeason.split('/');
+            let newStart = parseInt(start);
+            let newEnd = parseInt(end);
+            
+            // Increment years
+            newStart = newStart + 1;
+            newEnd = newEnd + 1;
+            
+            const newSeason = `${newStart}/${newEnd}`;
+            
+            // Check if the season already exists in the dropdown
+            const seasonExists = Array.from(seasonSelect.options).some(opt => opt.value === newSeason);
+            
+            if (seasonExists) {
+                // If season already exists, just navigate to it
+                alert(`Navigating to existing season ${newSeason}.`);
+                seasonSelect.value = newSeason;
+                window.location.href = window.location.pathname + '?season=' + newSeason;
+                button.disabled = false;
+                return;
+            }
+            
+            // Send AJAX request to save new season
+            $.ajax({
+                url: '{% url "add_season" story.id %}',
+                type: 'POST',
+                data: JSON.stringify({
+                    season: newSeason,
+                    story_id: {{ story.id }}
+                }),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Add new season to dropdown
+                        const option = document.createElement('option');
+                        option.value = response.season;
+                        option.text = response.season;
+                        seasonSelect.add(option);
+                        
+                        // Select the new season
+                        seasonSelect.value = response.season;
+                        
+                        // Redirect to the new season page
+                        window.location.href = window.location.pathname + '?season=' + newSeason;
+                    } else {
+                        alert('Error adding season: ' + (response.error || 'Unknown error'));
+                        button.disabled = false;
+                    }
+                },
+                error: function(xhr) {
+                    console.error("Failed to add season:", xhr.responseText);
+                    try {
+                        const errorData = JSON.parse(xhr.responseText);
+                        if (errorData.success === true) {
+                            // Sometimes success comes through the error handler
+                            // Add new season to dropdown
+                            const option = document.createElement('option');
+                            option.value = errorData.season;
+                            option.text = errorData.season;
+                            seasonSelect.add(option);
+                            
+                            // Navigate to new season
+                            seasonSelect.value = errorData.season;
+                            window.location.href = window.location.pathname + '?season=' + errorData.season;
+                        } else if (errorData.error && errorData.error.includes("duplicate key value")) {
+                            // Handle duplicate key specifically
+                            alert(`Season ${newSeason} already exists. Navigating to it now.`);
+                            
+                            // If it exists in database but not in dropdown, add it
+                            if (!seasonExists) {
+                                const option = document.createElement('option');
+                                option.value = newSeason;
+                                option.text = newSeason;
+                                seasonSelect.add(option);
+                            }
+                            
+                            // Navigate to that season
+                            seasonSelect.value = newSeason;
+                            window.location.href = window.location.pathname + '?season=' + newSeason;
+                        } else {
+                            alert('Error adding season: ' + (errorData.error || 'Unknown error'));
+                        }
+                    } catch (e) {
+                        alert('Error adding season. Please try again.');
+                    }
+                    button.disabled = false;
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

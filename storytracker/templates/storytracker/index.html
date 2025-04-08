@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIFA Story Generator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #338af3; /* Softer blue */
+            --secondary-color: #003f7f; /* Deeper navy */
+            --accent-color: #ff7f50; /* Warm contrast */
+            --background-color: #f0f2f5; /* Slightly warmer background */
+            --text-color: #2c2f35; /* Softer dark gray */
+            --navbar-color: #2c2f35; /* Dark gray for consistency */
+            --footer-color: #1f252b; /* Slightly darker footer */
+        }
+
+        body {
+            background-color: var(--background-color);
+            font-family: 'Roboto', sans-serif;
+            color: var(--text-color);
+        }
+
+        .navbar, footer {
+            background-color: var(--navbar-color);
+            color: #fff;
+        }
+
+        .card {
+            border: none;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin: 20px 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .scrollable-card {
+            max-height: 300px; /* Adjust the height as needed */
+            overflow-y: auto;
+        }
+
+        .loader {
+            display: none;
+            width: 50px;
+        }
+
+        #generateBtn, #saveStoryBtn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+
+        #generateBtn:hover, #saveStoryBtn:hover {
+            background: var(--secondary-color);
+            transform: translateY(-5px);
+        }
+
+        #generateBtn:disabled, #saveStoryBtn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #fff !important;
+        }
+
+        .nav-link.active {
+            color: #fff !important;
+            font-weight: bold;
+        }
+
+        footer {
+            background-color: var(--footer-color);
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">FIFA Career Story</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'home' %}">Home</a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'my_stories' %}">My Stories</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="nav-link">Welcome, {{ user.username }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'register' %}">Register</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container text-center">
+        <h1 class="my-4">FIFA Career Story Generator</h1>
+        
+        <section id="story-cards">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 col-md-12 col-sm-14">
+                    <div class="card mb-3" id="clubCard"></div>
+                    <div class="card mb-3" id="formationCard"></div>
+                    <div class="card mb-3" id="challengeCard"></div>
+                    <div class="card mb-3 scrollable-card" id="backgroundCard"></div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="buttons">
+            <div class="button-container">
+                <button onclick="generateStory()" id="generateBtn" class="btn btn-primary btn-lg mb-3">Generate New Story</button>
+                {% if user.is_authenticated %}
+                    <button onclick="saveStory()" id="saveStoryBtn" class="btn btn-success btn-lg mb-3">Save Story</button>
+                {% else %}
+                    <button class="btn btn-success btn-lg mb-3" onclick="window.location.href='{% url 'login' %}'">
+                        Login to Save Stories
+                    </button>
+                {% endif %}
+            </div>
+        </section>
+        
+        <section id="loader">
+            <div class="text-center">
+                <img src="https://i.gifer.com/ZZ5H.gif" class="loader" id="loader" alt="Loading...">
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <p>&copy; 2025 FIFA Career Story Generator. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function generateStory() {
+            const btn = document.getElementById('generateBtn');
+            const loader = document.getElementById('loader');
+            const saveBtn = {% if user.is_authenticated %}document.getElementById('saveStoryBtn'){% else %}null{% endif %};
+    
+            btn.disabled = true;
+            loader.style.display = 'inline-block';
+            if (saveBtn) {
+                saveBtn.style.display = 'none';  // Hide "Save Story" button initially
+            }
+    
+            fetch('/generate/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',  // Include CSRF token
+                    'Content-Type': 'application/json'
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    // Display generated story
+                    document.getElementById('clubCard').innerHTML = `<h3>Your Club: ${data.club}</h3>`;
+                    document.getElementById('formationCard').innerHTML = `<h3>Formation: ${data.formation}</h3>`;
+                    document.getElementById('challengeCard').innerHTML = `<h3>Challenge: ${data.challenge}</h3>`;
+                    document.getElementById('backgroundCard').innerHTML = `${data.background}`;
+    
+                    // Store data attributes for saving later if user is authenticated
+                    if (saveBtn) {
+                        saveBtn.setAttribute("data-club", data.club);
+                        saveBtn.setAttribute("data-formation", data.formation);
+                        saveBtn.setAttribute("data-challenge", data.challenge);
+                        saveBtn.setAttribute("data-background", data.background);
+                        saveBtn.style.display = 'block';  // Show "Save Story" button
+                    }
+                }
+                btn.disabled = false;
+                loader.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                btn.disabled = false;
+                loader.style.display = 'none';
+            });
+        }
+    
+        function saveStory() {
+            const saveBtn = document.getElementById('saveStoryBtn');
+            
+            // Disable the button immediately
+            saveBtn.disabled = true;
+            saveBtn.classList.add('btn-secondary');
+            saveBtn.classList.remove('btn-success');
+        
+            const club = saveBtn.getAttribute("data-club");
+            const formation = saveBtn.getAttribute("data-formation");
+            const challenge = saveBtn.getAttribute("data-challenge");
+            const background = saveBtn.getAttribute("data-background");
+        
+            fetch('/save-story/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    'club': club,
+                    'formation': formation,
+                    'challenge': challenge,
+                    'background': background
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Story saved successfully!");
+                    // Keep button disabled after successful save
+                } else {
+                    alert("Failed to save story.");
+                    // Re-enable button if save failed
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove('btn-secondary');
+                    saveBtn.classList.add('btn-success');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Re-enable button if there's an error
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('btn-secondary');
+                saveBtn.classList.add('btn-success');
+            });
+        }
+    </script>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

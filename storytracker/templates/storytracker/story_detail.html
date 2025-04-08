@@ -1,0 +1,290 @@
+{% block title %}{{ story.name }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">{{ story.name }}</h1>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="story-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link" id="player-stats-tab" data-toggle="tab" href="#player-stats" role="tab">Player Stats</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="seasons-tab" data-toggle="tab" href="#seasons" role="tab">Seasons</a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card-body">
+                    <div class="tab-content">
+                        
+                        <!-- Player Stats Tab -->
+                        <div class="tab-pane fade" id="player-stats" role="tabpanel">
+                            <div class="d-flex justify-content-between mb-3">
+                                <h3>Player Statistics for {{ current_season.name }}</h3>
+                                <button class="btn btn-primary" data-toggle="modal" data-target="#addPlayerStatsModal">Add Player Stats</button>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="seasonFilter">Select Season:</label>
+                                <select class="form-control" id="seasonFilter">
+                                    {% for season in seasons %}
+                                        <option value="{{ season.id }}" {% if season.id == current_season.id %}selected{% endif %}>
+                                            {{ season.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Player</th>
+                                            <th>Overall</th>
+                                            <th>Apps</th>
+                                            <th>Goals</th>
+                                            <th>Assists</th>
+                                            <th>Clean Sheets</th>
+                                            <th>Yellow Cards</th>
+                                            <th>Red Cards</th>
+                                            <th>Avg Rating</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="playerStatsTable">
+                                        {% for stat in player_stats %}
+                                        <tr>
+                                            <td>{{ stat.player.name }}</td>
+                                            <td>{{ stat.overall_rating }}</td>
+                                            <td>{{ stat.appearances }}</td>
+                                            <td>{{ stat.goals }}</td>
+                                            <td>{{ stat.assists }}</td>
+                                            <td>{{ stat.clean_sheets }}</td>
+                                            <td>{{ stat.yellow_cards }}</td>
+                                            <td>{{ stat.red_cards }}</td>
+                                            <td>{{ stat.average_rating }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning edit-stats" 
+                                                        data-id="{{ stat.id }}"
+                                                        data-toggle="modal" 
+                                                        data-target="#editPlayerStatsModal">
+                                                    Edit
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="10" class="text-center">No player statistics available for this season.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Seasons Tab -->
+                        <div class="tab-pane fade" id="seasons" role="tabpanel">
+                            <h3>Seasons</h3>
+                            <div class="list-group">
+                                {% for season in seasons %}
+                                <div class="list-group-item {% if season.is_current %}active{% endif %}">
+                                    <h5 class="mb-1">{{ season.name }} (Season {{ season.season_number }})</h5>
+                                    <p class="mb-1">League Position: {{ season.league_position|default:"Not recorded" }}</p>
+                                    <small>{{ season.notes }}</small>
+                                </div>
+                                {% empty %}
+                                <div class="list-group-item">
+                                    <p>No seasons available.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Player Stats Modal -->
+<div class="modal fade" id="addPlayerStatsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Player Statistics</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="addPlayerStatsForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="playerSelect">Select Player</label>
+                        <select class="form-control" id="playerSelect" name="player_id" required>
+                            <!-- You'll need to populate this with JavaScript or server-side -->
+                            <option value="">Select a player...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="seasonSelect">Season</label>
+                        <select class="form-control" id="seasonSelect" name="season_id" required>
+                            {% for season in seasons %}
+                                <option value="{{ season.id }}">{{ season.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="overallRating">Overall Rating</label>
+                        <input type="number" class="form-control" id="overallRating" name="overall_rating" min="1" max="99" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="appearances">Appearances</label>
+                            <input type="number" class="form-control" id="appearances" name="appearances" min="0" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="goals">Goals</label>
+                            <input type="number" class="form-control" id="goals" name="goals" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="assists">Assists</label>
+                            <input type="number" class="form-control" id="assists" name="assists" min="0" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="cleanSheets">Clean Sheets</label>
+                            <input type="number" class="form-control" id="cleanSheets" name="clean_sheets" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="yellowCards">Yellow Cards</label>
+                            <input type="number" class="form-control" id="yellowCards" name="yellow_cards" min="0" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="redCards">Red Cards</label>
+                            <input type="number" class="form-control" id="redCards" name="red_cards" min="0" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="averageRating">Average Rating</label>
+                        <input type="number" class="form-control" id="averageRating" name="average_rating" min="0" max="10" step="0.01" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Load players from the current club when page loads
+    loadClubPlayers();
+    
+    // Handle season filter change
+    $('#seasonFilter').change(function() {
+        const seasonId = $(this).val();
+        loadPlayerStats(seasonId);
+    });
+    
+    // Handle form submission
+    $('#addPlayerStatsForm').submit(function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        
+        $.ajax({
+            url: "{% url 'add_player_stats' slug=story.slug %}",
+            type: "POST",
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    $('#addPlayerStatsModal').modal('hide');
+                    loadPlayerStats($('#seasonFilter').val());
+                    alert('Player statistics saved successfully!');
+                }
+            },
+            error: function(xhr) {
+                alert('Error: ' + xhr.responseJSON.error);
+            }
+        });
+    });
+    
+    // Function to load club players
+    function loadClubPlayers() {
+        $.ajax({
+            url: "/api/clubs/{{ story.club.id }}/players/",
+            type: "GET",
+            success: function(response) {
+                const playerSelect = $('#playerSelect');
+                playerSelect.empty();
+                playerSelect.append('<option value="">Select a player...</option>');
+                
+                response.players.forEach(function(player) {
+                    playerSelect.append(`<option value="${player.id}">${player.name} (${player.overall})</option>`);
+                });
+            },
+            error: function() {
+                console.error("Failed to load players");
+            }
+        });
+    }
+    
+    // Function to load player stats for a specific season
+    function loadPlayerStats(seasonId) {
+        $.ajax({
+            url: `/api/seasons/${seasonId}/player-stats/`,
+            type: "GET",
+            success: function(response) {
+                const tableBody = $('#playerStatsTable');
+                tableBody.empty();
+                
+                if (response.player_stats.length === 0) {
+                    tableBody.append('<tr><td colspan="10" class="text-center">No player statistics available for this season.</td></tr>');
+                    return;
+                }
+                
+                response.player_stats.forEach(function(stat) {
+                    tableBody.append(`
+                        <tr>
+                            <td>${stat.player_name}</td>
+                            <td>${stat.overall_rating}</td>
+                            <td>${stat.appearances}</td>
+                            <td>${stat.goals}</td>
+                            <td>${stat.assists}</td>
+                            <td>${stat.clean_sheets}</td>
+                            <td>${stat.yellow_cards}</td>
+                            <td>${stat.red_cards}</td>
+                            <td>${stat.average_rating}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning edit-stats" 
+                                        data-id="${stat.id}"
+                                        data-toggle="modal" 
+                                        data-target="#editPlayerStatsModal">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            },
+            error: function() {
+                console.error("Failed to load player stats");
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

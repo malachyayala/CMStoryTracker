@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Saved Stories</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f4f9;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+        .story-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        .card-body {
+            margin-bottom: 10px; /* Adjust this value to reduce spacing */
+            padding: 10px; /* Adjust this value to reduce padding */
+        }
+        .story-card-container {
+            width: 100%;
+            max-width: 800px;
+            border: none;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px; /* Adjusted padding */
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .story-card-container:hover {
+            transform: translateY(-5px); /* Moves the card upwards */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Increased shadow for a floating effect */
+        }
+        .formatted-background {
+            white-space: pre-wrap;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+        .small-text {
+            font-size: 0.9rem;
+        }
+        .story-date {
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        /* Navbar styles from index.html */
+        .navbar {
+            background-color: #343a40;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: #fff;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #fff !important;
+        }
+        .nav-link.active {
+            color: #fff !important;
+            font-weight: bold;
+        }
+        .story-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .story-link:hover {
+            text-decoration: none;
+            color: inherit;
+        }
+        .view-details-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .view-details-btn:hover {
+            background-color: #0056b3;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">FIFA Career Story</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home' %}">Home</a>
+                </li>
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'my_stories' %}">My Stories</a>
+                </li>
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <li class="nav-item">
+                    <span class="nav-link">Welcome, {{ user.username }}</span>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'login' %}">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'register' %}">Register</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h1 class="my-4 text-center">My Saved Stories</h1>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10"> <!-- Makes it centered but not too wide -->
+            {% if stories %}
+                {% for item in stories %}
+                <div class="story-container">
+                    <a href="{% url 'story_detail' slug=item.story.slug %}" class="story-link w-100">
+                        <div class="story-card story-card-container"> <!-- New container for all story elements -->
+                            <div class="card-body">
+                                <h4 class="card-title">Club: {{ item.story.club }}</h4>
+                            </div>
+                    
+                            <div class="card-body">
+                                <h5 class="card-title">Formation: {{ item.story.formation }}</h5>
+                            </div>
+                    
+                            <div class="card-body">
+                                <h6 class="card-title">Challenge: {{ item.story.challenge }}</h6>
+                            </div>
+                    
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <a data-toggle="collapse" href="#background-{{ forloop.counter }}" role="button" aria-expanded="false" aria-controls="background-{{ forloop.counter }}" onclick="event.stopPropagation()">
+                                        Background <i class="fas fa-chevron-down"></i>
+                                    </a>
+                                </h6>   
+                                <div class="collapse" id="background-{{ forloop.counter }}">
+                                    <p class="card-text small-text formatted-background">{{ item.story.background|safe }}</p>
+                                </div>
+                            </div>
+
+                            <p class="text-muted story-date text-center">Saved on: {{ item.story.created_at }}</p>
+                        </div>
+                    </a>
+                    <hr class="w-100 my-4"> <!-- Moved inside story-container with width and margin classes -->
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-center">No saved stories yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
