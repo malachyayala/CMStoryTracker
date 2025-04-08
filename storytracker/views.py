@@ -333,3 +333,293 @@ def api_season_player_stats(request, season_id):
     } for stat in player_stats]
     
     return JsonResponse({'player_stats': stats_data})
+
+@login_required
+def add_season(request):
+    """Create a new season for a story"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            story_slug = data.get('story_slug')
+            season_name = data.get('season_name')
+            season_number = data.get('season_number')
+            
+            # Get the story
+            story = get_object_or_404(Story, slug=story_slug, user=request.user)
+            
+            # Check if season with this name already exists
+            if Season.objects.filter(story=story, name=season_name).exists():
+                return JsonResponse({'error': 'Season with this name already exists'}, status=400)
+            
+            # Set all seasons to not current
+            story.seasons.update(is_current=False)
+            
+            # Create new season
+            new_season = Season.objects.create(
+                story=story,
+                name=season_name,
+                season_number=season_number,
+                is_current=True
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'season_id': new_season.id,
+                'season_name': new_season.name
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@login_required
+def update_player_stat(request):
+    """Update a single field of player statistics"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            stat_id = data.get('stat_id')
+            field_name = data.get('field')
+            value = data.get('value')
+            
+            # Get the stat object
+            stat = get_object_or_404(PlayerStats, id=stat_id)
+            
+            # Check permission
+            if stat.story.user != request.user:
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+            
+            # Update the specified field
+            if hasattr(stat, field_name):
+                setattr(stat, field_name, value)
+                stat.save()
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': 'Invalid field'}, status=400)
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@login_required
+def update_season_awards(request, slug):
+    """Update season awards information"""
+    if request.method == 'POST':
+        story = get_object_or_404(Story, slug=slug)
+        
+        # Check permission
+        if story.user != request.user:
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+        
+        season_id = request.POST.get('season_id')
+        season = get_object_or_404(Season, id=season_id, story=story)
+        
+        # Here you would update various competition winners
+        # This depends on your exact model structure
+        # Example:
+        la_liga = request.POST.get('la_liga_winner')
+        if la_liga:
+            club = Club.objects.filter(name=la_liga).first()
+            if club:
+                CompetitionWinner.objects.update_or_create(
+                    story=story,
+                    season=season,
+                    competition__name='La Liga',
+                    defaults={'winner': club}
+                )
+        
+        # Do the same for other leagues and awards...
+        
+        return JsonResponse({'success': True})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@login_required
+def add_transfer(request):
+    """Add a new transfer"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            season_id = data.get('season_id')
+            player_name = data.get('player_name')
+            fee = data.get('fee')
+            direction = data.get('direction')
+            
+            # Get the season
+            season = get_object_or_404(Season, id=season_id)
+            story = season.story
+            
+            # Check permission
+            if story.user != request.user:
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+            
+            # Find or create player
+            player, created = Player.objects.get_or_create(
+                name=player_name,
+                defaults={'club': story.club}
+            )
+            
+            # Create transfer record
+            if direction == 'in':
+                club_name = data.get('from_club', 'Unknown Club')
+                from_club, created = Club.objects.get_or_create(name=club_name)
+                
+                transfer = Transfer.objects.create(
+                    season=season,
+                    story=story,
+                    player=player,
+                    from_club=from_club,
+                    to_club=story.club,
+                    fee=fee,
+                    transfer_date=timezone.now().date()
+                )
+            else:
+                club_name = data.get('to_club', 'Unknown Club')
+                to_club, created = Club.objects.get_or_create(name=club_name)
+                
+                transfer = Transfer.objects.create(
+                    season=season,
+                    story=story,
+                    player=player,
+                    from_club=story.club,
+                    to_club=to_club,
+                    fee=fee,
+                    transfer_date=timezone.now().date()
+                )
+            
+            return JsonResponse({
+                'success': True,
+                'transfer_id': transfer.id
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@login_required
+def delete_transfer(request):
+    """Delete a transfer"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            transfer_id = data.get('transfer_id')
+            
+            # Get the transfer
+            transfer = get_object_or_404(Transfer, id=transfer_id)
+            
+            # Check permission
+            if transfer.story.user != request.user:
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+            
+            # Delete the transfer
+            transfer.delete()
+            
+            return JsonResponse({'success': True})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@login_required
+def get_season_data(request, season_id):
+    """Get basic season information"""
+    season = get_object_or_404(Season, id=season_id)
+    
+    # Check permission
+    if season.story.user != request.user and not season.story.is_public:
+        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+    
+    return JsonResponse({
+        'success': True,
+        'season': {
+            'id': season.id,
+            'name': season.name,
+            'number': season.season_number,
+            'is_current': season.is_current
+        }
+    })
+
+@login_required
+def get_season_awards(request, season_id):
+    """Get awards data for a season"""
+    season = get_object_or_404(Season, id=season_id)
+    story = season.story
+    
+    # Check permission
+    if story.user != request.user and not story.is_public:
+        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+    
+    # Get competition winners
+    competition_winners = CompetitionWinner.objects.filter(season=season)
+    
+    # Transform to expected format
+    awards = {
+        'la_liga_winner': '',
+        'serie_a_winner': '',
+        'bundesliga_winner': '',
+        'ligue_1_winner': '',
+        'premier_league_winner': '',
+        'champions_league_winner': '',
+        'europa_league_winner': '',
+        'conference_league_winner': '',
+        'super_cup_winner': '',
+        'balon_dor_winner': '',
+        'golden_boy_winner': ''
+    }
+    
+    # Populate with actual data
+    for winner in competition_winners:
+        comp_name = winner.competition.name.lower().replace(' ', '_')
+        awards[f'{comp_name}_winner'] = winner.winner.name
+    
+    # Get individual awards
+    award_winners = AwardWinner.objects.filter(season=season)
+    for award in award_winners:
+        award_name = award.award.name.lower().replace(' ', '_').replace("'", '')
+        awards[f'{award_name}_winner'] = award.player.name
+    
+    return JsonResponse({
+        'success': True,
+        'awards': awards
+    })
+
+@login_required
+def get_season_transfers(request, season_id):
+    """Get transfers for a season"""
+    season = get_object_or_404(Season, id=season_id)
+    story = season.story
+    
+    # Check permission
+    if story.user != request.user and not story.is_public:
+        return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+    
+    # Get transfers
+    transfers_in = Transfer.objects.filter(season=season, to_club=story.club)
+    transfers_out = Transfer.objects.filter(season=season, from_club=story.club)
+    
+    # Format transfers
+    transfers_in_data = [{
+        'id': t.id,
+        'player_name': t.player.name,
+        'from_club': t.from_club.name,
+        'fee': t.fee,
+        'date': t.transfer_date.strftime('%Y-%m-%d')
+    } for t in transfers_in]
+    
+    transfers_out_data = [{
+        'id': t.id,
+        'player_name': t.player.name,
+        'to_club': t.to_club.name,
+        'fee': t.fee,
+        'date': t.transfer_date.strftime('%Y-%m-%d')
+    } for t in transfers_out]
+    
+    return JsonResponse({
+        'success': True,
+        'transfers_in': transfers_in_data,
+        'transfers_out': transfers_out_data
+    })
