@@ -22,4 +22,6 @@ urlpatterns = [
     path('api/transfers/add/', views.add_transfer, name='add_transfer'),
     path('api/transfers/delete/', views.delete_transfer, name='delete_transfer'),
     path('api/seasons/add/', views.add_season, name='add_season'),
+    path('api/player-stats/delete/', views.delete_player_stat, name='delete_player_stat'),
+
 ]

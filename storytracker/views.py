@@ -293,6 +293,31 @@ def add_player_stats(request, slug):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 @login_required
+def delete_player_stat(request):
+    """Delete player statistics"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            stat_id = data.get('stat_id')
+            
+            # Get the stat object
+            stat = get_object_or_404(PlayerStats, id=stat_id)
+            
+            # Check permission
+            if stat.story.user != request.user:
+                return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+            
+            # Delete the stat
+            stat.delete()
+            
+            return JsonResponse({'success': True})
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
+
+@login_required
 def api_club_players(request, club_id):
     """API endpoint to get players for a specific club"""
     club = get_object_or_404(Club, id=club_id)
